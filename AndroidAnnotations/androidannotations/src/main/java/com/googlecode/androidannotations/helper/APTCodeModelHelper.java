@@ -244,7 +244,9 @@ public class APTCodeModelHelper {
 		errorInvoke.arg(exceptionParam);
 
 		runCatch.body().add(errorInvoke);
-		return anonymousRunnableClass;
+        runCatch.body()._throw(exceptionParam);
+
+        return anonymousRunnableClass;
 	}
 
 	public JVar castContextToActivity(EBeanHolder holder, JBlock ifActivityBody) {
