@@ -267,25 +267,54 @@ public class ThreadActivityTest {
 		}
 	}
 
+	/**
+	 * Assert that RuntimeExceptions thrown in threads from executorService
+	 * invoke the default exception handler.
+	 *
+	 * Set a custom exception handler which stores the throwable and then check
+	 * its content.
+	 */
 	@Test
-	public void propagateException() {
-		BackgroundExecutor.setExecutor(new Executor() {
-			@Override
-			public void execute(Runnable command) {
-				command.run();
-			}
-		});
-		try {
-			activity.backgroundThrowException();
-			Assert.fail("Exception should be propagated in @Background annotated methods");
-		} catch (RuntimeException e) {
-			// good
-		}
-		try {
-			activity.uiThreadThrowException();
-			Assert.fail("Exception should be propagated in @UIThread annotated methods");
-		} catch (RuntimeException e) {
-			// good
+	public void propagateExceptionToDefaultExceptionHandler() throws InterruptedException {
+		Thread.UncaughtExceptionHandler originExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
+
+		TestExceptionHandler testExceptionHandler = new TestExceptionHandler();
+		Thread.setDefaultUncaughtExceptionHandler(testExceptionHandler);
+
+		BackgroundExecutor.setExecutor(Executors.newScheduledThreadPool(1));
+		Semaphore sem = new Semaphore(-1);
+
+		activity.backgroundThrowException(sem);
+		sem.tryAcquire(500, TimeUnit.MILLISECONDS);
+		Assert.assertNotNull("Exception should be propagated in @Backgound annotated methods", testExceptionHandler.throwable);
+
+		testExceptionHandler.throwable = null;
+
+		activity.uiThreadThrowException(sem);
+		sem.tryAcquire(500, TimeUnit.MILLISECONDS);
+		Assert.assertNotNull("Exception should be propagated in @UIThread annotated methods", testExceptionHandler.throwable);
+
+		testExceptionHandler.throwable = null;
+
+		activity.backgroundDelayThrowException(sem);
+		sem.tryAcquire(500, TimeUnit.MILLISECONDS);
+		Assert.assertNotNull("Exception should be propagated in @Backgound(delay) annotated methods", testExceptionHandler.throwable);
+
+		activity.uiThreadDelayThrowException(sem);
+		sem.tryAcquire(500, TimeUnit.MILLISECONDS);
+		Assert.assertNotNull("Exception should be propagated in @UIThread(delay annotated methods", testExceptionHandler.throwable);
+
+		testExceptionHandler.throwable = null;
+
+		Thread.setDefaultUncaughtExceptionHandler(originExceptionHandler);
+	}
+
+	class TestExceptionHandler implements Thread.UncaughtExceptionHandler {
+		Throwable throwable;
+
+		@Override
+		public void uncaughtException(Thread thread, Throwable ex) {
+			throwable = ex;
 		}
 	}
 

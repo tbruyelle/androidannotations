@@ -29,7 +29,6 @@ import org.androidannotations.test15.ebean.SomeBean;
 import org.androidannotations.test15.instancestate.MySerializableBean;
 
 import android.app.Activity;
-import android.os.Looper;
 
 @EActivity
 public class ThreadActivity extends Activity {
@@ -141,12 +140,38 @@ public class ThreadActivity extends Activity {
 	}
 
 	@Background
-	void backgroundThrowException() {
-		throw new RuntimeException();
+	void backgroundThrowException(Semaphore sem) {
+		try {
+			throw new RuntimeException();
+		} finally {
+			sem.release();
+		}
+	}
+
+	@Background(delay = 100)
+	void backgroundDelayThrowException(Semaphore sem) {
+		try {
+			throw new RuntimeException();
+		} finally {
+			sem.release();
+		}
 	}
 
 	@UiThread
-	void uiThreadThrowException() {
-		throw new RuntimeException();
+	void uiThreadThrowException(Semaphore sem) {
+		try {
+			throw new RuntimeException();
+		} finally {
+			sem.release();
+		}
+	}
+
+	@UiThread(delay = 100)
+	void uiThreadDelayThrowException(Semaphore sem) {
+		try {
+			throw new RuntimeException();
+		} finally {
+			sem.release();
+		}
 	}
 }

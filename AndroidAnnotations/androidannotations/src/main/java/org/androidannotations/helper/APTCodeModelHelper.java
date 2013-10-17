@@ -44,8 +44,10 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
 import org.androidannotations.processing.EBeanHolder;
+import org.androidannotations.processing.EBeansHolder;
 
 import com.sun.codemodel.JBlock;
+import com.sun.codemodel.JCatchBlock;
 import com.sun.codemodel.JClass;
 import com.sun.codemodel.JClassAlreadyExistsException;
 import com.sun.codemodel.JCodeModel;
@@ -59,6 +61,7 @@ import com.sun.codemodel.JInvocation;
 import com.sun.codemodel.JMethod;
 import com.sun.codemodel.JMod;
 import com.sun.codemodel.JStatement;
+import com.sun.codemodel.JTryBlock;
 import com.sun.codemodel.JType;
 import com.sun.codemodel.JTypeVar;
 import com.sun.codemodel.JVar;
@@ -233,6 +236,19 @@ public class APTCodeModelHelper {
 		throw new IllegalStateException("Unable to extract target name from JFieldRef");
 	}
 
+	public JTryBlock surroundWithTryCatch(EBeanHolder holder, JBlock block, JBlock content) {
+		EBeansHolder.Classes classes = holder.classes();
+		JTryBlock tryBlock = block._try();
+		tryBlock.body().add(content);
+		JCatchBlock catchBlock = tryBlock._catch(classes.RUNTIME_EXCEPTION);
+		JVar exceptionParam = catchBlock.param("e");
+		JInvocation invoke = classes.THREAD.staticInvoke("getDefaultUncaughtExceptionHandler").invoke("uncaughtException");
+		invoke.arg(classes.THREAD.staticInvoke("currentThread"));
+		invoke.arg(exceptionParam);
+		catchBlock.body().add(invoke);
+		return tryBlock;
+	}
+
 	public JDefinedClass createDelegatingAnonymousRunnableClass(EBeanHolder holder, JMethod delegatedMethod) {
 
 		JCodeModel codeModel = holder.codeModel();
@@ -245,7 +261,9 @@ public class APTCodeModelHelper {
 		JMethod runMethod = anonymousRunnableClass.method(JMod.PUBLIC, codeModel.VOID, "run");
 		runMethod.annotate(Override.class);
 
-		runMethod.body().add(previousMethodBody);
+		JBlock runMethodBody = runMethod.body();
+
+		surroundWithTryCatch(holder, runMethodBody, previousMethodBody);
 
 		return anonymousRunnableClass;
 	}

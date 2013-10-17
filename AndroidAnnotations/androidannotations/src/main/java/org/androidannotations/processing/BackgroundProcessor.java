@@ -60,7 +60,8 @@ public class BackgroundProcessor implements DecoratingElementProcessor {
 		JMethod executeMethod = anonymousTaskClass.method(JMod.PUBLIC, codeModel.VOID, "execute");
 		executeMethod.annotate(Override.class);
 
-		executeMethod.body().add( previousMethodBody );
+		JBlock runMethodBody = executeMethod.body();
+		helper.surroundWithTryCatch(holder, runMethodBody, previousMethodBody);
 
 		Background annotation = element.getAnnotation(Background.class);
 		String id = annotation.id();
